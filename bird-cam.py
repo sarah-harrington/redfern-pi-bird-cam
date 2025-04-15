@@ -4,7 +4,7 @@ from ultralytics import YOLO
 
 class cvfeeder:
 		
-	def main(self):
+	def __init__(self):
 		# set our time between checks in seconds
 		self.delay = 4
 
@@ -12,19 +12,31 @@ class cvfeeder:
 		self.birdLabel = 14
 
 		# confidence standard
-		self.goalConf = 0.35
-
+		self.goalConf = 0.60
+		
 		# Load a pretrained YOLO model (recommended for training)
 		self.model = YOLO('yolov8n.pt')
 		
+		# Flag for using RTSP vs. USB camera
+		self.use_rtsp = True
+		
+		# Link to connect to RTSP camera
+		self.rtsp_url = ""
+		
+		# Variable for USB camera if found
 		self.cam = None
 		
 		self.debug_mode = True
 		
 		# flag if bird is present, false on start up
 		self.bird_present = False;
+		
+		self.found_bird_breeds = []
+		self.bird_breed_already_found_today = False;
+		
+	def main(self):
 
-		# open our video feed
+		# open our video feed, if this fails program will exit
 		self.get_camera()
 		
 		#run in bursts for efficiency
@@ -44,11 +56,8 @@ class cvfeeder:
 				# if we found a bird, do motor stuff
 				print(f"Found bird: {foundbird}")
 				
-				if foundbird and  not self.alreadyFed:
-					self.alreadyFed = self.motor()
-					
-				if self.alreadyFed:
-					exit()
+				if foundbird and not self.bird_breed_already_found_today:
+					# TODO save off feed
 				
 				# print(results.classes)
 				last_run_time = time.time()
@@ -56,22 +65,34 @@ class cvfeeder:
 		
 	def get_camera(self):
 		print("Searching for camera...")
-		for i in range(10):
-			self.cam = cv2.VideoCapture(i)
+		
+		# Try RTSP, if none found use USB
+		try:
+			self.cam = cv2.VideoCapture(self.rtsp_url)
 			
-			# check to see if it worked
-			found, frame = self.cam.read()
-			if found:
-				print(f"Found camera at index {i}, connected successfully")
-				break
+		except: 
+			print("Failed to connect to RTSP, trying USB...")
+			
+			try: 
+				for i in range(10):
+					self.cam = cv2.VideoCapture(i)
+					
+					# check to see if it worked
+					found, frame = self.cam.read()
+					if found:
+						print(f"Found camera at index {i}, connected successfully")
+						break
+			except: 
+				print("Failed to find USB camera...")
 
-		if self.cam == None:
-			print("Unable to find camera")
+		# If we didn't find a camera or it can't open a camera
+		if self.cam == None or not self.cam.isOpened():
+			print("ERROR: Unable to find camera")
 			exit()
 			
 			
 	def findbird(self, image, found):
-		# set our variable for if we find something
+		# local variable for if we find a bird at all
 		foundbird = False
 		
 		# only progress if the camera read was successful
@@ -118,5 +139,7 @@ class cvfeeder:
 		
 		
 if __name__ == "__main__":
+	print("Starting up....")
 	#call to class
 	obj = cvfeeder()
+	obj.main()
