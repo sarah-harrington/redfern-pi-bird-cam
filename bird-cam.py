@@ -58,6 +58,7 @@ class cvfeeder:
 				
 				if foundbird and not self.bird_breed_already_found_today:
 					# TODO save off feed
+					passS
 				
 				# print(results.classes)
 				last_run_time = time.time()
